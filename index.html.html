@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Data to Word</title>
+<style>
+:root{--bg:#f3f6fa;--surface:#fff;--ink:#16202e;--muted:#5d6b7c;--line:#d5dde7;--accent:#1f5fbf;--accent-ink:#fff;--danger:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#10151c;--surface:#19212b;--ink:#e8edf3;--muted:#9aa8b8;--line:#2c3744;--accent:#6ea3f0;--accent-ink:#0b1626;--danger:#f08a82}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI",Tahoma,Arial,sans-serif;padding:20px}
+main{max-width:760px;margin:0 auto}
+h1{font-size:1.6rem;margin:0 0 4px}
+p.sub{margin:0 0 20px;color:var(--muted)}
+section{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+h2{font-size:1.05rem;margin:0 0 10px}
+label{display:block;font-size:.9rem;color:var(--muted);margin-bottom:4px}
+input{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+input:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+button{padding:10px 16px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button.del{color:var(--danger);padding:4px 10px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:420px}
+th,td{border:1px solid var(--line);padding:8px;text-align:left}
+th{background:var(--bg)}
+td.sn{width:60px;text-align:center}
+.empty{color:var(--muted);text-align:center;padding:16px}
+</style>
+</head>
+<body>
+<main>
+<h1>Student Data to Word</h1>
+<p class="sub">Enter student data. Everything appears in numbered order in the Word file.</p>
+
+<section>
+<h2>Add student</h2>
+<div class="grid">
+<div><label for="sname">Student Name</label><input id="sname"></div>
+<div><label for="branch">Branch</label><input id="branch"></div>
+</div>
+<div class="row"><button class="primary" id="add">Add student</button></div>
+</section>
+
+<section>
+<h2>Table</h2>
+<div class="scroll"><table id="tbl"></table></div>
+<div class="row">
+<button class="primary" id="export">Download Word file</button>
+<button id="clear">Clear all</button>
+</div>
+</section>
+</main>
+
+<script>
+var rows = [];
+var $ = function(id){return document.getElementById(id)};
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+function render(){
+  var h = '<tr><th>S.No</th><th>Student Name</th><th>Branch</th><th></th></tr>';
+  if(!rows.length) h += '<tr><td class="empty" colspan="4">No students yet. Add one above.</td></tr>';
+  rows.forEach(function(r,i){
+    h += '<tr><td class="sn">'+(i+1)+'</td><td>'+esc(r[0])+'</td><td>'+esc(r[1])+'</td>' +
+      '<td><button class="del" data-i="'+i+'">Remove</button></td></tr>';
+  });
+  $('tbl').innerHTML = h;
+}
+
+function addRow(){
+  var n = $('sname').value.trim(), c = $('branch').value.trim();
+  if(!n && !c) return;
+  rows.push([n,c]);
+  $('sname').value=''; $('branch').value='';
+  $('sname').focus();
+  render();
+}
+
+$('add').onclick = addRow;
+$('sname').addEventListener('keydown',function(e){ if(e.key==='Enter'){e.preventDefault();$('branch').focus();} });
+$('branch').addEventListener('keydown',function(e){ if(e.key==='Enter'){e.preventDefault();addRow();} });
+$('clear').onclick = function(){ if(rows.length && confirm('Remove all student data?')){rows=[];render();} };
+$('tbl').addEventListener('click',function(e){
+  var i = e.target.getAttribute('data-i');
+  if(i!==null){ rows.splice(+i,1); render(); }
+});
+
+$('export').onclick = function(){
+  if(!rows.length){ alert('Add at least one student first.'); return; }
+  var t = '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%">' +
+    '<tr style="background:#e8eef7"><th>S.No</th><th>Student Name</th><th>Branch</th></tr>';
+  rows.forEach(function(r,i){
+    t += '<tr><td align="center">'+(i+1)+'</td><td>'+esc(r[0])+'</td><td>'+esc(r[1])+'</td></tr>';
+  });
+  t += '</table>';
+  var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
+    '<head><meta charset="utf-8"><title>Student List</title></head><body style="font-family:Calibri,Arial">' +
+        t + '</body></html>';
+  var blob = new Blob(['\ufeff'+html],{type:'application/msword'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  var fn = 'Student_List';
+  a.download = fn + '.doc';
+  document.body.appendChild(a); a.click(); a.remove();
+};
+render();
+</script>
+</body>
+</html>
